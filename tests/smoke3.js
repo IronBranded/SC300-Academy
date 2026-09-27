@@ -1,0 +1,10 @@
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+const dom = new JSDOM(html, { runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.org/', beforeParse(w){ w.scrollTo=()=>{}; w.Element.prototype.scrollIntoView=()=>{}; } });
+const w = dom.window; let bad = [];
+w.MODULES.forEach(m => { w.location.hash = '#/m/' + m.id; w.dispatchEvent(new w.HashChangeEvent('hashchange'));
+  const side = [...w.document.querySelectorAll('.field__key')].some(k => k.textContent === 'Microsoft Learn');
+  const src = w.document.getElementById('content').innerHTML.includes('Microsoft Learn training:');
+  if (!side || !src) bad.push(m.id + (side?'':' noSide') + (src?'':' noSrc')); });
+w.LEARN.forEach(L => { if (L.ms.length < 3) bad.push(L.id + ' ms ' + L.ms.length); });
+console.log('Learn links check:', bad.length ? bad : 'all 18 modules + 6 primers OK');

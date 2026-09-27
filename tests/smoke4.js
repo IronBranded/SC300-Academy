@@ -1,0 +1,11 @@
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+const dom = new JSDOM(html, { runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.org/', beforeParse(w){ w.scrollTo=()=>{}; w.Element.prototype.scrollIntoView=()=>{}; } });
+const w = dom.window; const bad = [];
+w.MODULES.forEach(m => { w.location.hash = '#/m/' + m.id; w.dispatchEvent(new w.HashChangeEvent('hashchange'));
+  const keys = [...w.document.querySelectorAll('.field__key')].map(k => k.textContent);
+  const c = w.document.getElementById('content').innerHTML;
+  if (!keys.includes('Sources verified') || !keys.includes('Lab run') || !c.includes('were checked on 2026-09-25')) bad.push(m.id); });
+w.location.hash = '#/m/02-01'; w.dispatchEvent(new w.HashChangeEvent('hashchange'));
+const row = [...w.document.querySelectorAll('.field__row')].find(r => r.textContent.startsWith('Sources verified'));
+console.log('stamp check:', bad.length ? bad : 'all 18 OK', '| sample:', row && row.textContent);

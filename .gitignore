@@ -1,0 +1,6 @@
+.cache/
+verify/out/
+node_modules/
+_site/
+tests/screenshots/
+package-lock.json

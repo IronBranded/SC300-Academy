@@ -1,0 +1,86 @@
+name: Validate
+
+# GitHub Pages deploys straight from this repository (main, root), so this is the gate:
+# the committed index.html must be exactly what build.sh produces from parts/ and
+# content/, the headless tests must pass, and the app's 98 objectives must still match
+# docs/SKILLS-MEASURED-SNAPSHOT.md word for word.
+#
+# The weekly run (and a manual run with "full" ticked) adds the full verification
+# against Microsoft's sources: documentation links, KQL schemas, cmdlet references,
+# Azure CLI syntax, the facts ledger and the answer-key ledger. A scheduled failure
+# opens an issue, because it means Microsoft changed something the guide relies on.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Also re-verify against Microsoft's sources (slower)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Committed index.html matches its sources
+        run: |
+          sh build.sh
+          git diff --exit-code -- index.html || { echo "::error::index.html is stale - run 'sh build.sh' and commit it"; exit 1; }
+
+      - name: Headless tests
+        run: |
+          npm install --no-save --no-audit --no-fund jsdom@24
+          sh tests/run.sh
+
+      - name: Objectives match the official outline snapshot
+        run: python3 verify/outline.py
+
+      - name: Re-verify against Microsoft's sources
+        if: github.event_name == 'schedule' || inputs.full == true
+        run: |
+          pip install --quiet azure-cli
+          bash verify/run_all.sh
+
+      - name: Upload the verification report
+        if: always() && (github.event_name == 'schedule' || inputs.full == true)
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-report
+          path: verify/out
+
+      - name: Open an issue when the weekly verification fails
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.existsSync('verify/out/summary.md') ? fs.readFileSync('verify/out/summary.md', 'utf8') : 'See the workflow run.';
+            await github.rest.issues.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title: 'Weekly verification failed: Microsoft sources changed',
+              body: body + '\n\nRun: ' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId
+            });

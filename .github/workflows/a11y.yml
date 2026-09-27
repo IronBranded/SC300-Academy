@@ -1,0 +1,55 @@
+name: Accessibility
+
+# Automated accessibility regression check. tests/a11y-check.js loads every page type
+# (dashboard, Learn index and primer, glossary, module, lab, practice assessment start and
+# question, practice exam, readiness, cost planner) in both themes and runs axe-core
+# against WCAG 2.0/2.1 A and AA plus best practice. Any violation, any JavaScript error
+# while a page renders, or a page that scrolls sideways on a phone fails the run.
+# Screenshots of every page are uploaded.
+#
+# Playwright and axe-core are installed here only, pinned, and never shipped:
+# the site itself stays dependency-free.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: a11y-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  axe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install the checker (CI only)
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.56.0 axe-core@4.13.0
+          npx playwright install --with-deps chromium
+
+      - name: Serve the site
+        run: |
+          python3 -m http.server 8080 >/tmp/server.log 2>&1 &
+          for i in $(seq 1 20); do curl -sf http://localhost:8080/ >/dev/null && break; sleep 0.5; done
+
+      - name: Run axe on every page type, both themes, phone and desktop
+        run: node tests/a11y-check.js
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: tests/screenshots

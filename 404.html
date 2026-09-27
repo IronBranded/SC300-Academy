@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Not found - SC300 Academy</title>
+<script>
+  /* GitHub Pages serves this for any missing path. On a project site the Academy
+     lives under /<repo>/, not at the domain root, so redirecting to "/" (as this
+     page used to) sent people to the wrong site. Keep the first path segment on
+     *.github.io; use the root anywhere else (a custom domain). */
+  (function () {
+    var seg = location.pathname.split('/')[1];
+    var base = (/\.github\.io$/.test(location.hostname) && seg) ? '/' + seg + '/' : '/';
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('home').setAttribute('href', base);
+    });
+    location.replace(base);
+  })();
+</script>
+</head>
+<body>
+<p>That page does not exist. <a id="home" href="/SC300-Academy/">Back to the Academy</a>.</p>
+</body>
+</html>

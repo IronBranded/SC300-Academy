@@ -1,0 +1,15 @@
+{
+  "name": "sc300-academy",
+  "private": true,
+  "scripts": {
+    "build": "sh build.sh",
+    "test": "sh tests/run.sh",
+    "outline": "python3 verify/outline.py",
+    "verify": "bash verify/run_all.sh"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  },
+  "license": "MIT",
+  "description": "SC-300 study guide grounded in Microsoft documentation"
+}
